@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CALIVISION — calistenia validada por câmera</title>
+<meta name="description" content="Aplicativo de calistenia que só conta a repetição quando a câmera valida o movimento completo.">
+<style>
+  :root { --bg:#05080C; --card:#0D141D; --borda:#1B2735; --texto:#E8F1FA; --mudo:#7F93A8; --ciano:#00E5FF; --azul:#2D7BFF; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:radial-gradient(1200px 600px at 50% -10%, #0B1A26 0%, var(--bg) 60%); color:var(--texto);
+         font-family:'Segoe UI','Inter',system-ui,Arial,sans-serif; line-height:1.6; min-height:100vh; }
+  main { max-width:980px; margin:0 auto; padding:48px 24px 72px; }
+  header { text-align:center; padding:24px 0 8px; }
+  header img { width:210px; max-width:60%; height:auto; }
+  h1 { font-size:clamp(2rem,6vw,3rem); letter-spacing:.35em; color:var(--ciano); margin-top:8px; padding-left:.35em; }
+  .lema { color:var(--mudo); font-size:1.1rem; margin-top:10px; }
+  .selo { display:inline-block; margin-top:18px; padding:6px 14px; border:1px solid var(--borda); border-radius:999px; color:var(--mudo); font-size:.85rem; }
+  .botoes { margin-top:26px; display:flex; gap:12px; justify-content:center; flex-wrap:wrap; }
+  .btn { padding:13px 26px; border-radius:12px; font-weight:700; text-decoration:none; border:1px solid var(--borda); color:var(--texto); background:#121C28; }
+  .btn:hover { border-color:var(--ciano); }
+  .btn.p { background:linear-gradient(90deg,var(--ciano),var(--azul)); color:#021018; border:none; }
+  section { margin-top:56px; }
+  h2 { font-size:1.35rem; margin-bottom:16px; }
+  .grade { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:16px; }
+  .card { background:var(--card); border:1px solid var(--borda); border-radius:20px; padding:22px; box-shadow:0 10px 40px rgba(0,229,255,.06); }
+  .card h3 { color:var(--ciano); font-size:1.05rem; margin-bottom:6px; }
+  .card p, li { color:var(--mudo); font-size:.95rem; }
+  ol { padding-left:20px; } li { margin:6px 0; }
+  table { width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--borda); border-radius:16px; overflow:hidden; }
+  th, td { text-align:left; padding:12px 16px; border-bottom:1px solid var(--borda); font-size:.92rem; }
+  th { color:var(--ciano); } td { color:var(--mudo); } tr:last-child td { border-bottom:0; }
+  .tabela { overflow-x:auto; }
+  pre { background:#0A1118; border:1px solid var(--borda); border-radius:14px; padding:16px; overflow-x:auto; color:#9FEFFF; font-size:.88rem; }
+  .aviso { border-left:3px solid var(--azul); padding:12px 16px; background:#0A1520; border-radius:0 12px 12px 0; color:var(--mudo); font-size:.92rem; }
+  footer { margin-top:64px; text-align:center; color:var(--mudo); font-size:.85rem; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="assets/logo_ui.png" alt="Logo do CALIVISION">
+    <h1>CALIVISION</h1>
+    <p class="lema">Calistenia validada por câmera.</p>
+    <span class="selo">Projeto em desenvolvimento</span>
+    <div class="botoes">
+      <a class="btn p" id="repo" href="#">Ver código no GitHub</a>
+      <a class="btn" href="#como-usar">Como usar</a>
+    </div>
+  </header>
+
+  <section>
+    <h2>A ideia</h2>
+    <div class="grade">
+      <div class="card"><h3>Sem marcar “feito”</h3><p>O usuário não conclui o exercício com um clique. Quem decide é a câmera, que acompanha o corpo em tempo real.</p></div>
+      <div class="card"><h3>Só conta o completo</h3><p>Uma máquina de estados exige o ciclo inteiro: posição inicial, descida, amplitude mínima, subida e retorno. Movimento incompleto é rejeitado.</p></div>
+      <div class="card"><h3>Privacidade local</h3><p>O processamento é feito no próprio computador. Não grava vídeo e não envia imagens para servidor.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Exercícios</h2>
+    <div class="tabela"><table>
+      <tr><th>Exercício</th><th>Tipo</th><th>Critério inicial (a calibrar)</th></tr>
+      <tr><td>Flexão</td><td>repetições</td><td>cotovelo ≤ 90° embaixo, ≥ 155° em cima, corpo alinhado</td></tr>
+      <tr><td>Paralelas</td><td>repetições</td><td>cotovelo ≤ 90° embaixo, ≥ 155° em cima</td></tr>
+      <tr><td>Prancha</td><td>tempo</td><td>ombro-quadril-tornozelo ≥ 165°, só soma o tempo com postura válida</td></tr>
+      <tr><td>Agachamento</td><td>repetições</td><td>joelho ≤ 100° embaixo, ≥ 160° em cima</td></tr>
+    </table></div>
+  </section>
+
+  <section id="como-usar">
+    <h2>Como usar</h2>
+    <ol>
+      <li>Instale o Python 3.10 ou 3.11.</li>
+      <li>Baixe o projeto pelo GitHub e instale as dependências.</li>
+      <li>Abra o aplicativo, crie sua conta e escolha o exercício.</li>
+      <li>Posicione a câmera de lado, na altura do quadril, a cerca de 2 m, com o corpo inteiro visível.</li>
+    </ol>
+    <pre>python -m venv .venv
+.venv\Scripts\activate          # Linux/macOS: source .venv/bin/activate
+pip install -r requirements.txt
+python main.py</pre>
+  </section>
+
+  <section>
+    <h2>Tecnologias</h2>
+    <p class="card" style="color:var(--mudo)">Python · MediaPipe Pose · OpenCV · PySide6 · SQLite</p>
+  </section>
+
+  <section>
+    <h2>Limitações</h2>
+    <p class="aviso">Esta página apresenta o projeto, o aplicativo não roda no navegador: ele precisa ser instalado e usa a câmera do seu computador. Os limites de ângulo ainda estão em calibração e a estimativa de pose em 2D erra mais com o corpo deitado ou parcialmente escondido. A análise não garante execução correta nem ausência de lesão.</p>
+  </section>
+
+  <footer>CALIVISION · projeto estudantil em desenvolvimento</footer>
+</main>
+<script>
+  // Monta o link do repositório a partir do endereço do GitHub Pages (usuario.github.io/repositorio)
+  (function () {
+    var h = location.hostname, p = location.pathname.split('/')[1];
+    if (/\.github\.io$/.test(h) && p) document.getElementById('repo').href = 'https://github.com/' + h.split('.')[0] + '/' + p;
+  })();
+</script>
+</body>
+</html>
