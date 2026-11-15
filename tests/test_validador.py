@@ -28,3 +28,17 @@ def test_prancha_conclui():
 def test_abertura_monta_tela():
     from calivision.abertura import montar_abertura
     t = montar_abertura(); assert t.shape == (700, 900, 3) and t.max() > 0
+
+def test_biblioteca_consistente_com_validadores():
+    from calivision.biblioteca import BIBLIOTECA
+    from calivision.sessao import CFG
+    ativos = {e["nome"] for e in BIBLIOTECA if e["validado"]}
+    assert len(ativos) == len(CFG) + 1          # validadores de repetição + prancha
+    assert all(e["criterio"] and e["seguranca"] for e in BIBLIOTECA)
+
+def test_calibracao_resumo(tmp_path):
+    from calivision import calibracao
+    linhas = "t,angulo,visibilidade,postura_ok\n" + "".join(f"{i},{70+i%100},0.9,1\n" for i in range(200))
+    (tmp_path / "flexao_boa_1.csv").write_text(linhas)
+    r = calibracao.resumir(str(tmp_path))
+    assert r[0][0] == "flexao" and r[0][1] == "boa" and r[0][3] < r[0][5]

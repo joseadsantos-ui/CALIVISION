@@ -1,11 +1,14 @@
 import os, sys, time, sqlite3
+from datetime import date, timedelta
 import cv2
-from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtGui import QImage, QPixmap, QColor
-from PySide6.QtWidgets import (QApplication, QComboBox, QGraphicsDropShadowEffect, QFrame, QHBoxLayout, QLabel, QLineEdit, QMainWindow,
+from PySide6.QtCore import Qt, QTimer, Signal, QRectF
+from PySide6.QtGui import QImage, QPixmap, QColor, QPainter, QLinearGradient
+from PySide6.QtWidgets import (QApplication, QComboBox, QGraphicsDropShadowEffect, QListWidget, QFrame, QHBoxLayout, QLabel, QLineEdit, QMainWindow,
                                QMessageBox, QProgressBar, QPushButton, QStackedWidget, QVBoxLayout, QWidget)
 from .. import banco
 from ..sessao import Sessao
+from ..biblioteca import BIBLIOTECA
+from .. import conquistas
 from .estilo import QSS
 
 ASSETS = os.path.join(os.path.dirname(__file__), "..", "..", "assets")
@@ -31,6 +34,22 @@ def vbox(*itens, m=24, esp=12):
     for i in itens: v.addWidget(i) if isinstance(i, QWidget) else v.addLayout(i)
     return v
 
+class Barras(QWidget):
+    """Gráfico de barras desenhado à mão (sem dependências extras)."""
+    def __init__(self):
+        super().__init__(); self.dados = []; self.setMinimumHeight(150)
+    def definir(self, dados): self.dados = dados; self.update()
+    def paintEvent(self, e):
+        p = QPainter(self); p.setRenderHint(QPainter.Antialiasing)
+        w, h = self.width(), self.height(); n = len(self.dados) or 1
+        mx = max([v for _, v in self.dados] + [1]); larg, area = w / n, h - 46
+        for i, (rot, v) in enumerate(self.dados):
+            bh = max(area * v / mx, 4) if v else 4; x, y = i * larg + larg * 0.2, 16 + area - bh
+            g = QLinearGradient(0, y, 0, y + bh); g.setColorAt(0, QColor("#00D9FF")); g.setColorAt(1, QColor("#1677FF"))
+            p.setBrush(g if v else QColor("#16212E")); p.setPen(Qt.NoPen); p.drawRoundedRect(QRectF(x, y, larg * 0.6, bh), 6, 6)
+            p.setPen(QColor("#AAB6C8")); p.drawText(QRectF(i * larg, h - 22, larg, 18), Qt.AlignCenter, rot)
+            if v: p.setPen(QColor("#E8F1FA")); p.drawText(QRectF(i * larg, y - 18, larg, 16), Qt.AlignCenter, str(v))
+
 class Login(QWidget):
     def __init__(self, con, ao_entrar):
         super().__init__(); self.con, self.ao_entrar, self.cadastro = con, ao_entrar, False
@@ -41,7 +60,7 @@ class Login(QWidget):
         self.alternar = QPushButton("Não tem conta? Criar conta"); self.alternar.setObjectName("link"); self.alternar.clicked.connect(self.trocar)
         for c in (self.nome, self.email, self.senha): c.returnPressed.connect(self.enviar)
         t = rotulo("CALIVISION", "titulo"); t.setAlignment(Qt.AlignCenter)
-        s = rotulo("Calistenia validada por câmera", "sub"); s.setAlignment(Qt.AlignCenter)
+        s = rotulo("TREINE. EXECUTE. EVOLUA.", "sub"); s.setAlignment(Qt.AlignCenter)
         c = card(vbox(logo(190), t, s, self.nome, self.email, self.senha, self.erro, self.botao, self.alternar, m=36, esp=12))
         c.setFixedWidth(430); self.nome.hide(); self.erro.hide()
         meio = QHBoxLayout(); meio.addStretch(); meio.addWidget(c); meio.addStretch()
@@ -69,12 +88,13 @@ class Login(QWidget):
         self.mostrar_erro(""); self.senha.clear(); self.ao_entrar(uid)
 
 class Home(QWidget):
-    def __init__(self, con, ao_iniciar, ao_sair):
+    def __init__(self, con, ao_iniciar, ao_sair, ao_biblioteca):
         super().__init__(); self.con, self.ao_iniciar = con, ao_iniciar; self.uid = None
         self.ola = rotulo("", "h2")
         sair = QPushButton("Sair"); sair.clicked.connect(ao_sair)
+        bib = QPushButton("Biblioteca"); bib.clicked.connect(ao_biblioteca)
         topo = QHBoxLayout(); topo.addWidget(logo(46)); topo.addWidget(rotulo("CALIVISION", "marca")); topo.addStretch()
-        topo.addWidget(self.ola); topo.addSpacing(16); topo.addWidget(sair)
+        topo.addWidget(self.ola); topo.addSpacing(16); topo.addWidget(bib); topo.addSpacing(8); topo.addWidget(sair)
         self.stats = {}
         linha = QHBoxLayout(); linha.setSpacing(16)
         for k, t in (("treinos", "Treinos"), ("reps", "Repetições validadas"), ("prancha", "Segundos de prancha validados")):
@@ -89,7 +109,9 @@ class Home(QWidget):
                               rotulo("Só conta o que a câmera validar.", "sub"), m=26, esp=8))
         self.novo.setFixedWidth(400)
         self.lista = QVBoxLayout(); self.lista.setSpacing(0)
-        cl = vbox(rotulo("Últimos treinos", "h2"), self.lista, m=26, esp=10); cl.addStretch()
+        self.grafico = Barras()
+        self.conq = QLabel(); self.conq.setTextFormat(Qt.RichText)
+        cl = vbox(rotulo("Repetições validadas nos últimos 7 dias", "h2"), self.grafico, rotulo("Últimos treinos", "h2"), self.lista, rotulo("Conquistas", "h2"), self.conq, m=26, esp=10); cl.addStretch()
         corpo = QHBoxLayout(); corpo.setSpacing(16); corpo.addWidget(self.novo); corpo.addWidget(card(cl), 1)
         raiz = QVBoxLayout(); raiz.setContentsMargins(36, 28, 36, 28); raiz.setSpacing(20)
         raiz.addLayout(topo); raiz.addLayout(linha); raiz.addLayout(corpo, 1); self.setLayout(raiz)
@@ -111,14 +133,42 @@ class Home(QWidget):
         self.stats["treinos"].setText(str(q("SELECT COUNT(*) FROM treinamentos WHERE usuario_id=?")))
         self.stats["reps"].setText(str(q("SELECT SUM(s.reps_validadas) " + base + " AND e.nome!='prancha'")))
         self.stats["prancha"].setText(str(q("SELECT SUM(s.reps_validadas) " + base + " AND e.nome='prancha'")))
+        d = dict(c.execute("SELECT date(t.inicio,'localtime'), SUM(s.reps_validadas) " + base + " AND e.nome!='prancha' GROUP BY 1", (uid,)).fetchall())
+        hoje = date.today(); dias = [hoje - timedelta(days=i) for i in range(6, -1, -1)]
+        self.grafico.definir([(x.strftime('%d/%m'), d.get(str(x), 0)) for x in dias])
+        conquistas.verificar(c, uid); ganhas = conquistas.listar(c, uid)
+        self.conq.setText("<br>".join(f"<span style='color:#00D9FF'>✓ {n}</span>" if n in ganhas else f"<span style='color:#5C6B80'>○ {n}</span>"
+                                       for n, _, _ in conquistas.DEFINICOES))
         while self.lista.count(): self.lista.takeAt(0).widget().deleteLater()
-        linhas = c.execute("""SELECT t.inicio, e.nome, COALESCE(SUM(s.reps_validadas),0), t.situacao FROM treinamentos t
+        linhas = c.execute("""SELECT strftime('%d/%m %H:%M', t.inicio, 'localtime'), e.nome, COALESCE(SUM(s.reps_validadas),0), t.situacao FROM treinamentos t
             JOIN exercicios_treino et ON et.treinamento_id=t.id JOIN exercicios e ON e.id=et.exercicio_id
             LEFT JOIN series s ON s.exercicio_treino_id=et.id WHERE t.usuario_id=? GROUP BY et.id ORDER BY t.id DESC LIMIT 6""", (uid,)).fetchall()
         if not linhas: self.lista.addWidget(rotulo("Nenhum treino validado ainda. Comece o primeiro!", "sub"))
         for ini, nome, v, sit in linhas:
             un = "s" if nome == "prancha" else " reps"
-            self.lista.addWidget(rotulo(f"{ini[:16]}   •   {NOMES.get(nome, nome)}   •   {v}{un}   •   {sit}", "item"))
+            self.lista.addWidget(rotulo(f"{ini}   •   {NOMES.get(nome, nome)}   •   {v}{un}   •   {sit}", "item"))
+
+class Biblioteca(QWidget):
+    def __init__(self, ao_voltar):
+        super().__init__()
+        voltar = QPushButton("← Voltar"); voltar.clicked.connect(ao_voltar)
+        topo = QHBoxLayout(); topo.addWidget(voltar); topo.addSpacing(12); topo.addWidget(rotulo("Biblioteca de exercícios", "h2")); topo.addStretch()
+        self.lista = QListWidget(); self.lista.setFixedWidth(360); self.lista.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        for ex in BIBLIOTECA: self.lista.addItem(f"{ex['nome']}    {'● câmera' if ex['validado'] else '○ em breve'}")
+        self.lista.currentRowChanged.connect(self.mostrar)
+        self.det = QLabel(); self.det.setTextFormat(Qt.RichText); self.det.setWordWrap(True); self.det.setAlignment(Qt.AlignTop | Qt.AlignLeft)
+        corpo = QHBoxLayout(); corpo.setSpacing(16); corpo.addWidget(self.lista); corpo.addWidget(card(vbox(self.det, m=30)), 1)
+        raiz = QVBoxLayout(); raiz.setContentsMargins(36, 28, 36, 28); raiz.setSpacing(20); raiz.addLayout(topo); raiz.addLayout(corpo, 1)
+        self.setLayout(raiz); self.lista.setCurrentRow(0)
+
+    def mostrar(self, i):
+        if i < 0: return
+        ex = BIBLIOTECA[i]; li = lambda xs: "".join(f"<li>{x}</li>" for x in xs)
+        sel = ("Validação por câmera: <b style='color:#00D9FF'>disponível</b>" if ex["validado"]
+               else "Validação por câmera: <b style='color:#FFB020'>em breve</b> (o app ainda não valida este exercício)")
+        self.det.setText(f"<h1 style='color:#00D9FF'>{ex['nome']}</h1><p style='color:#AAB6C8'>{ex['categoria']} · {ex['musculos']}</p><p>{sel}</p>"
+                         f"<h3>Posição inicial</h3><p>{ex['inicio']}</p><h3>Execução</h3><ol>{li(ex['passos'])}</ol>"
+                         f"<h3>Critério de validação</h3><p>{ex['criterio']}</p><h3>Segurança</h3><p>{ex['seguranca']}</p>")
 
 class Treino(QWidget):
     terminou = Signal(str)
@@ -190,9 +240,10 @@ class Janela(QMainWindow):
         super().__init__(); self.setWindowTitle("CALIVISION"); self.con = con or banco.conectar()
         self.pilha = QStackedWidget(); self.pilha.setObjectName("raiz"); self.setCentralWidget(self.pilha)
         self.login = Login(self.con, self.entrar)
-        self.home = Home(self.con, self.comecar, lambda: self.pilha.setCurrentWidget(self.login))
+        self.biblioteca = Biblioteca(lambda: self.pilha.setCurrentWidget(self.home))
+        self.home = Home(self.con, self.comecar, lambda: self.pilha.setCurrentWidget(self.login), lambda: self.pilha.setCurrentWidget(self.biblioteca))
         self.treino = Treino(self.con); self.treino.terminou.connect(self.fim)
-        for p in (self.login, self.home, self.treino): self.pilha.addWidget(p)
+        for p in (self.login, self.home, self.treino, self.biblioteca): self.pilha.addWidget(p)
 
     def entrar(self, uid): self.uid = uid; self.home.atualizar(uid); self.pilha.setCurrentWidget(self.home)
 
@@ -201,6 +252,8 @@ class Janela(QMainWindow):
         if r == QMessageBox.Yes and self.treino.iniciar(uid, ex, series, meta): self.pilha.setCurrentWidget(self.treino)
 
     def fim(self, resumo):
+        novas = conquistas.verificar(self.con, self.uid)
+        if novas: resumo += "\n\nNova conquista: " + ", ".join(novas)
         QMessageBox.information(self, "CALIVISION", resumo); self.home.atualizar(self.uid); self.pilha.setCurrentWidget(self.home)
 
     def closeEvent(self, e): self.treino.parar("interrompido"); super().closeEvent(e)

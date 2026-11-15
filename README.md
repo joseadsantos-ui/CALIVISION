@@ -47,6 +47,13 @@ Cadastre-se na tela inicial, escolha o exercício, as séries e a meta, e inicie
 
     python main.py cadastrar "Seu Nome" voce@email.com
     python main.py treinar voce@email.com --exercicio flexao --series 3 --reps 10
+
+Calibração (grava só ângulos, sem vídeo):
+
+    python main.py gravar --exercicio flexao --rotulo boa --segundos 40
+    python main.py gravar --exercicio flexao --rotulo incompleta
+    python main.py analisar
+
     python main.py treinar voce@email.com --exercicio prancha --series 3 --reps 30   # reps = segundos
 
 Teclas: `p` pausa, `q` encerra.
@@ -85,6 +92,22 @@ Rodam sem câmera, com ângulos simulados:
 - Os limites de ângulo são valores iniciais e precisam de calibração com testes reais.
 - O sistema pode ser enganado por movimentos que imitam o ciclo. Ele dificulta a trapaça, mas não a elimina.
 - A análise não garante execução correta nem ausência de lesão. Em caso de dor, pare e procure um profissional.
+
+## Situação em relação à especificação
+
+| Item | Situação |
+|---|---|
+| Câmera, esqueleto e validação de flexão | implementado, **sem teste com câmera real** |
+| Paralelas, prancha, agachamento | implementado, sem teste com câmera real |
+| Máquina de estados, filtros de oscilação | implementado e testado (ângulos simulados) |
+| Cadastro, login, banco SQLite | implementado e testado |
+| Interface (login, início, treino, biblioteca) | implementado |
+| Histórico recente, gráfico de 7 dias, conquistas | implementado, dados reais |
+| Calibração (gravar e analisar ângulos) | implementado |
+| Barra fixa, L-sit e demais exercícios | só na biblioteca, **sem validação** |
+| Recuperação de senha, exclusão de conta, configurações, perfil | não implementado |
+| Criação de rotinas, níveis e progressões | não implementado |
+| Versão Android | não implementado |
 
 ## Próximos passos
 

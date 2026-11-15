@@ -11,8 +11,8 @@ class Pose:
     def desenhar(self, frame, lm):
         d = mp.solutions.drawing_utils
         d.draw_landmarks(frame, lm, mp.solutions.pose.POSE_CONNECTIONS,
-                         d.DrawingSpec(color=(255, 229, 0), thickness=3, circle_radius=4),   # ciano
-                         d.DrawingSpec(color=(255, 123, 45), thickness=3))                  # azul
+                         d.DrawingSpec(color=(255, 217, 0), thickness=3, circle_radius=4),   # ciano
+                         d.DrawingSpec(color=(255, 119, 22), thickness=3))                  # azul
     def fechar(self): self._p.close()
 
 def _lado(lm, a, b, c):

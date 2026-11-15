@@ -5,7 +5,7 @@ import numpy as np
 
 LOGO = os.path.join(os.path.dirname(__file__), "..", "assets", "logo.png")
 NOME = "CALIVISION"
-CIANO_BGR = (255, 230, 0)
+CIANO_BGR = (255, 217, 0)
 
 def montar_abertura(largura=900, altura=700):
     tela = np.zeros((altura, largura, 3), dtype=np.uint8)

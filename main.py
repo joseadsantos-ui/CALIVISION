@@ -69,7 +69,18 @@ def main():
     t = sp.add_parser("treinar"); t.add_argument("email")
     t.add_argument("--exercicio", choices=["flexao", "paralelas", "prancha", "agachamento"], default="flexao")
     t.add_argument("--series", type=int, default=3); t.add_argument("--reps", type=int, default=10)
+    g = sp.add_parser("gravar"); g.add_argument("--exercicio", choices=["flexao", "paralelas", "prancha", "agachamento"], required=True)
+    g.add_argument("--rotulo", required=True, help="ex.: boa, incompleta, quadril-caido (sem underscore)"); g.add_argument("--segundos", type=int, default=40)
+    sp.add_parser("analisar")
     a = ap.parse_args()
+    if a.cmd == "gravar":
+        from calivision import calibracao; return print("Salvo em", calibracao.gravar(a.exercicio, a.rotulo, a.segundos))
+    if a.cmd == "analisar":
+        from calivision import calibracao; r = calibracao.resumir()
+        if not r: return print("Nenhuma gravação encontrada. Use: python main.py gravar --exercicio flexao --rotulo boa")
+        print(f"{'exercicio':<12}{'rotulo':<16}{'quadros':>8}{'p5':>8}{'mediana':>9}{'p95':>8}")
+        for ex, rot, n, p5, med, p95 in r: print(f"{ex:<12}{rot:<16}{n:>8}{p5:>8.0f}{med:>9.0f}{p95:>8.0f}")
+        return print("\nSugestão para rótulo 'boa': fundo ≈ p5 + 10 e topo ≈ p95 - 10 (compare com 'incompleta').")
     if not a.cmd:
         from calivision.ui.janela import executar; return executar()
     con = banco.conectar()
